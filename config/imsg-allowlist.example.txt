@@ -1,0 +1,7 @@
+# Copy to ~/.config/commandcenter/imsg-allowlist.txt (outside the repo).
+# One recipient per line: phone number or email first, then an optional label
+# the agent can use instead ("send to Mom"). Anyone not listed is refused.
+# Edits take effect on the next send; no restart needed.
+#
+# +1 (555) 010-0000   Mom
+# someone@example.com Sam

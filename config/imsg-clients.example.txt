@@ -1,0 +1,7 @@
+# Copy nothing from here by hand: create entries with
+#   imsg-mcp token add <label> -scopes read[,send] [-chats ID,ID]
+# which writes ~/.config/commandcenter/imsg-clients.txt (mode 600).
+# Format, one client per line (only a SHA-256 hash of each token is stored):
+# label           scopes     token hash                                                               limits
+claude-desktop    read,send  sha256:0000000000000000000000000000000000000000000000000000000000000000
+sandbox-agent     read       sha256:1111111111111111111111111111111111111111111111111111111111111111 chats=12,40

@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# task: a tiny file-based task tracker. Each task is one Markdown file in
+# tasks/ with a small header, so tasks diff cleanly in git and any agent can
+# read or edit them directly.
+#
+#   bin/task                      list open tasks (todo + doing)
+#   bin/task list [all|todo|doing|done] [area]
+#   bin/task add "Title" [area]   create a task, prints its id
+#   bin/task start <id>           mark doing
+#   bin/task done <id>            mark done
+#   bin/task reopen <id>          mark todo
+#   bin/task show <id>            print the task file
+#   bin/task note <id> "text"     append a dated note
+#
+# Works with the bash 3.2 that ships with macOS.
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DIR="${TASKS_DIR:-$ROOT/tasks}"
+mkdir -p "$DIR"
+
+die() { echo "task: $*" >&2; exit 1; }
+
+field() { # field <file> <name>
+  sed -n "s/^$2: //p" "$1" | head -1
+}
+
+file_for() {
+  local id; id=$(printf '%03d' "$((10#$1))" 2>/dev/null) || die "bad id: $1"
+  local f
+  for f in "$DIR/$id"-*.md; do
+    [ -e "$f" ] && { echo "$f"; return 0; }
+  done
+  die "no task $1"
+}
+
+set_field() { # set_field <file> <name> <value>  (rewrites in place, no delete)
+  local tmp; tmp="$(mktemp)"
+  awk -v k="$2" -v v="$3" 'BEGIN{done=0} !done && index($0, k": ")==1 {print k": "v; done=1; next} {print}' "$1" > "$tmp"
+  cat "$tmp" > "$1"
+  rm -f "$tmp"
+}
+
+next_id() {
+  local max=0 f n
+  for f in "$DIR"/[0-9][0-9][0-9]-*.md; do
+    [ -e "$f" ] || continue
+    n=$(basename "$f"); n=${n%%-*}; n=$((10#$n))
+    [ "$n" -gt "$max" ] && max=$n
+  done
+  printf '%03d' $((max + 1))
+}
+
+slug() {
+  echo "$1" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9]\{1,\}/-/g' -e 's/^-//' -e 's/-$//' | cut -c1-48
+}
+
+cmd_list() {
+  local want="${1:-open}" area="${2:-}" f st ar mark count=0
+  for f in "$DIR"/[0-9][0-9][0-9]-*.md; do
+    [ -e "$f" ] || continue
+    st=$(field "$f" status); ar=$(field "$f" area)
+    case "$want" in
+      all) ;;
+      open) [ "$st" = done ] && continue ;;
+      *) [ "$st" = "$want" ] || continue ;;
+    esac
+    [ -n "$area" ] && [ "$ar" != "$area" ] && continue
+    case "$st" in todo) mark="[ ]" ;; doing) mark="[~]" ;; done) mark="[x]" ;; *) mark="[?]" ;; esac
+    printf '%s %s  %-8s %s\n' "$mark" "$(field "$f" id)" "${ar:--}" "$(field "$f" title)"
+    count=$((count + 1))
+  done
+  [ "$count" -eq 0 ] && echo "(no tasks)"
+  return 0
+}
+
+cmd_add() {
+  [ -n "${1:-}" ] || die 'usage: task add "Title" [area]'
+  local id f; id=$(next_id); f="$DIR/$id-$(slug "$1").md"
+  cat > "$f" <<EOF
+---
+id: $id
+title: $1
+status: todo
+area: ${2:-general}
+created: $(date +%Y-%m-%d)
+---
+
+EOF
+  echo "$id  $f"
+}
+
+cmd_status() { local f; f=$(file_for "$1"); set_field "$f" status "$2"; echo "$(field "$f" id) -> $2: $(field "$f" title)"; }
+
+cmd_note() {
+  [ -n "${2:-}" ] || die 'usage: task note <id> "text"'
+  local f; f=$(file_for "$1")
+  printf -- '- %s: %s\n' "$(date +%Y-%m-%d)" "$2" >> "$f"
+}
+
+case "${1:-}" in
+  ""|ls) cmd_list open ;;
+  list) shift; cmd_list "$@" ;;
+  add) shift; cmd_add "$@" ;;
+  start) cmd_status "${2:?id}" doing ;;
+  done) cmd_status "${2:?id}" done ;;
+  reopen) cmd_status "${2:?id}" todo ;;
+  show) f=$(file_for "${2:?id}"); cat "$f" ;;
+  note) shift; cmd_note "$@" ;;
+  -h|--help|help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) die "unknown command: $1 (try: task help)" ;;
+esac

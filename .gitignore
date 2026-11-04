@@ -1,0 +1,11 @@
+# build output
+/build/
+*.test
+
+# secrets and local config never belong in the repo
+.env
+*.env
+!*.env.example
+
+# macOS
+.DS_Store
