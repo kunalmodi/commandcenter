@@ -9,6 +9,12 @@ agents into a Mac. Each is a single Go binary using only the standard library.
 | [`grok-mcp`](cmd/grok-mcp) | Ask xAI's Grok for a second opinion (CLI sign-in or API key) | stdio |
 | [`codex-mcp`](cmd/codex-mcp) | Ask OpenAI's models via the Codex CLI (uses its sign-in) | stdio |
 
+Tools and skills:
+
+| Tool | What it does |
+| --- | --- |
+| [`sitecheck`](cmd/sitecheck) + [`site-check` skill](skills/site-check/SKILL.md) | Audit a URL: PageSpeed / Core Web Vitals, share previews (OG and X cards as the crawlers see them), SEO, HTTPS, security headers, broken links |
+
 ## Build
 
 Needs Go 1.21+ (`brew install go`).
@@ -17,6 +23,7 @@ Needs Go 1.21+ (`brew install go`).
 make build      # binaries in ./build
 make test       # vet + unit tests
 make install    # copy binaries to ~/.local/bin (override with PREFIX=...)
+make skills     # symlink skills/* into ~/.claude/skills
 ```
 
 ## Settings and secrets
@@ -58,6 +65,7 @@ internal/mcp       JSON-RPC/MCP over stdio and HTTP
 internal/jobs      background jobs + get_result for slow model calls
 internal/env       settings file loading, PATH widening for GUI-launched apps
 internal/proc      running external commands with timeouts
+skills/<name>/     Claude skills (SKILL.md), linked into ~/.claude/skills by make skills
 config/            example settings files
 tasks/             the project's task list (see bin/task)
 ```

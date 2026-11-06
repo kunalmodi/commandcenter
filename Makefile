@@ -1,8 +1,9 @@
-# Build all servers into ./build (gitignored).
-SERVERS := imsg-mcp grok-mcp codex-mcp
+# Build all servers and tools into ./build (gitignored).
+SERVERS := imsg-mcp grok-mcp codex-mcp sitecheck
 PREFIX  ?= $(HOME)/.local/bin
+SKILLS_DIR ?= $(HOME)/.claude/skills
 
-.PHONY: build test vet install clean $(SERVERS)
+.PHONY: build test vet install skills clean $(SERVERS)
 
 build: $(SERVERS)
 
@@ -17,6 +18,12 @@ test:
 install: build
 	mkdir -p $(PREFIX)
 	cp $(addprefix build/,$(SERVERS)) $(PREFIX)/
+
+# Symlink each skills/<name> into ~/.claude/skills so Claude Code picks it up;
+# edits in the repo take effect immediately.
+skills:
+	mkdir -p $(SKILLS_DIR)
+	for s in skills/*/; do n=$$(basename $$s); ln -sfn "$(CURDIR)/skills/$$n" "$(SKILLS_DIR)/$$n"; echo "linked $$n"; done
 
 clean:
 	rm -rf build
