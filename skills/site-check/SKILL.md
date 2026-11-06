@@ -34,6 +34,7 @@ It prints findings grouped by area, each marked FAIL, WARN, INFO or PASS:
 | social | Open Graph and X card tags *as the crawlers see them* (the page is refetched with the facebookexternalhit and Twitterbot user agents), plus the share image's reachability, format, size, dimensions and aspect ratio |
 | seo | title, meta description, h1, lang, viewport, canonical, noindex, robots.txt (also for the preview crawlers), sitemap, JSON-LD, image alt text (including content photos marked `alt=""`) |
 | content | main text extracted by **trafilatura** (saved to `content.md`), word count, heading outline, title vs h1, vague or repeated link text, links with no text |
+| aeo | answer engines and AI search (read [aeo.md](aeo.md) first) (ChatGPT, Claude, Perplexity, AI Overviews, Copilot): robots.txt rules for each AI crawler, split into ones that answer or cite (blocking them hides you) and ones that only collect training data (a choice); live fetches with AI crawlers' user agents to catch firewall or Cloudflare bot blocking that contradicts robots.txt; whether the text is in the server HTML (most AI crawlers don't run JavaScript); entity, author and date markup; FAQ-style structure; Content-Signal; llms.txt |
 | site | only with `-crawl N`: **advertools** crawls the site (sitemap first, obeys robots.txt). Covers broken internal URLs with the page linking to them, duplicate titles and descriptions, missing tags, sitemap entries that redirect, error, are noindexed or canonicalise elsewhere, orphan pages, hreflang return links, and site-wide alt text and link text. The rows are saved to `crawl.jl` |
 | security | HSTS, CSP, nosniff, clickjacking, referrer policy, leaked server versions, mixed content |
 | links | broken links on the page (the first 40, same-site first) |
@@ -132,43 +133,55 @@ can't make happens:
 
 Give two or three concrete content suggestions, not a generic checklist.
 
-## 4. Interpret, don't just relay
+**For AEO** (getting cited by ChatGPT, Claude and the rest), first read
+[aeo.md](aeo.md). It says what the evidence supports and how strongly. The short
+version:
 
-- **Field data beats lab data.** Google ranks with real-user Core Web Vitals
-  (the "real users (p75)" line, from the Chrome UX Report). Lighthouse scores are
-  diagnostics. A 70 performance score with passing field data is fine; failing
-  field data is a real problem whatever the score says. Data marked "the whole
-  origin" means this URL lacked traffic of its own.
-- **Some FAILs are intentional.** `noindex`, or a canonical pointing elsewhere,
-  is correct on staging, previews and pagination. If the URL looks like staging
-  (`staging.`, `preview`, `*.vercel.app`, `localhost`), say so instead of
-  sounding the alarm, or ask whether it's meant to be public.
-- **Crawler-specific results matter.** If the facebookexternalhit or Twitterbot
-  fetch gets a 403, a different page, or tags the browser fetch doesn't, it's
-  usually bot protection (Cloudflare, Vercel firewall) or client-side-only meta
-  tags. Previews break everywhere then, so rank it high.
-- **Client-rendered sites.** sitecheck reads the HTML the server sends, like the
-  preview crawlers do. Tags that appear only after JavaScript runs are invisible
-  to Facebook, X, LinkedIn and Slack. Google renders JS, but slowly. If title, OG
-  tags or the h1 are missing yet the page clearly has them in a browser, that's
-  the cause. The fix is server-side rendering or static meta tags.
-- Treat INFO lines as optional polish. Mention a few only if they're cheap wins.
+1. **Retrieval decides everything.** ChatGPT cites mostly from Bing's results,
+   and Claude from Brave's. A page outside those results can't be cited. So the
+   first AEO advice is usually: get into Bing (Webmaster Tools, sitemap,
+   IndexNow), stay crawlable for Brave, and don't block the retrieval crawlers.
+2. **Then make it quotable.** Give a direct answer early, and passages that
+   stand on their own. Above all, use **statistics, quotations and cited
+   sources**: they raised visibility by up to ~40% in the GEO study, the best
+   evidence there is. The `Evidence` line counts them; you judge whether they're
+   real and relevant.
+3. **Keep it fresh**, especially on health and money topics. Most cited pages
+   were updated within two years.
+4. **Off-page counts.** Brand mentions on Reddit, review sites, comparison lists
+   and YouTube correlate with AI visibility more than backlinks do. Suggest being
+   present where the user's questions are already being answered.
 
-## 5. Report back
+Weighing the `aeo` rules:
 
-Keep it short and ordered by impact:
+- **An AI *search* crawler refused by the firewall while robots.txt allows it
+  is the most important AEO finding.** It's usually Cloudflare's AI bot
+  blocking or a Vercel/WAF rule, and the owner rarely knows. sitecheck only
+  spoofs the user agent, and real crawlers come from published IP ranges. So
+  say "check the bot settings", not "you are blocked".
+- **Training crawlers blocked (GPTBot, ClaudeBot, Google-Extended, CCBot) is a
+  legitimate choice.** Never call it an error. Google-Extended has no effect on
+  AI Overviews.
+- **Don't recommend llms.txt or AI-specific schema as fixes.** The evidence for
+  both is nil, and Google says neither is needed. Entity markup is worth adding
+  for ordinary search reasons only.
+- **Don't promise citations.** Assistants' answers vary between runs, and
+  nobody controls selection. Frame advice as raising the odds.
 
-1. **One-line verdict**, e.g. "Ready to share. Two SEO fixes are worth doing
-   first" or "Link previews are broken: Facebook's crawler gets a 403".
-2. **Fix first**: the FAILs and important WARNs, each with *why it matters* and
-   *the concrete fix* (the tag to add, the header to set, the image size to
-   export). Group duplicates; mobile and desktop often report the same thing.
-3. **Scores**: one line per strategy, plus field Core Web Vitals if present.
-4. **Worth doing later**: a few cheap polish items.
-5. **Not checked**: anything that failed to run, and the manual checks below
-   that matter for this page.
+## Checking AI visibility by hand
 
-Don't paste the raw report unless asked.
+The rules can't tell whether assistants actually cite the site. Suggest these
+checks, which are cheap and real:
+
+- **Prompt sampling.** Ask ChatGPT (with search), Claude, Perplexity and Google
+  (to trigger an AI Overview) the two or three questions the page should win,
+  from step 3. Note who gets cited, several times over, since answers vary.
+- **Retrieval rank.** Search the same questions on bing.com (ChatGPT's main
+  source) and search.brave.com (Claude's). If the page isn't on page one there,
+  that's the problem to fix first.
+- **Analytics and logs.** Filter for `utm_source=chatgpt.com`, and look for
+  `ChatGPT-User`, `Claude-User` and `Perplexity-User` in the server logs.
+  Those are live fetches made to answer someone's question.
 
 ## Tools underneath
 

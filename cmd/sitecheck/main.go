@@ -21,6 +21,9 @@
 //	             queries, sitemaps) and Bing Webmaster Tools (backlinks)
 //	content      main text via trafilatura (saved to content.md), outline,
 //	             title/h1 agreement, link text
+//	aeo          answer engines / AI search: AI crawler access (robots.txt and
+//	             live fetches), text without JavaScript, entity/author/date
+//	             markup, answer-shaped structure, llms.txt
 //	site         with -crawl N: advertools crawls the site; broken links,
 //	             duplicates, sitemap health, orphans, hreflang return links
 //	links        broken links on the page (first -links of them)
@@ -109,7 +112,7 @@ func (r *report) fact(k string, v any) {
 	r.mu.Unlock()
 }
 
-var areaOrder = []string{"basics", "performance", "search", "seo", "content", "site", "social", "security", "links"}
+var areaOrder = []string{"basics", "performance", "search", "seo", "content", "aeo", "site", "social", "security", "links"}
 
 func (r *report) sort() {
 	rank := map[string]int{}
@@ -288,6 +291,7 @@ func run(ctx context.Context, target *url.URL, o options) (*report, error) {
 	do(func() { checkSEO(ctx, r, f, pg, d) })
 	do(func() { checkSocial(ctx, r, f, pg, o.outDir) })
 	do(func() { checkContent(ctx, r, pg, d, o.outDir) })
+	do(func() { checkAEO(ctx, r, f, pg, d) })
 	do(func() { checkSecurity(r, pg, d) })
 	if o.search {
 		do(func() { checkSearch(ctx, r, pg.final, time.Now()) })

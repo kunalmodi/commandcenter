@@ -19,6 +19,7 @@ sitecheck -json https://example.com/      # machine-readable
 | security | HSTS, CSP, nosniff, frame protection, referrer policy, version-leaking headers, mixed content |
 | links | broken links (the first `-links` N, same-site first) |
 | content | main text via **trafilatura** (saved to `content.md`), word count, heading outline, title vs h1, vague, repeated and empty link text |
+| aeo | AI search and assistants: AI crawler rules in robots.txt (answer vs training crawlers), live fetches with AI user agents (catches firewall/Cloudflare blocks robots.txt doesn't show), text without JavaScript, entity/author/date markup, FAQ structure, Content-Signal, llms.txt |
 | site | `-crawl N`: **advertools** crawls the site (sitemap first, obeys robots.txt); broken internal URLs with their linking page, duplicate titles and descriptions, missing tags, sitemap entries that redirect, error or are noindexed, orphan pages, hreflang return links, site-wide alt and link text (rows saved to `crawl.jl`) |
 | search | sites you own: Google Search Console (index status, Google's canonical, last crawl, rich results, 28 days of clicks, impressions and positions, top and striking-distance queries, sitemaps) and Bing Webmaster Tools (backlinks, linking pages) |
 
