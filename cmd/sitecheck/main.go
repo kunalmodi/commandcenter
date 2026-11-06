@@ -19,6 +19,10 @@
 //	security     common security headers, mixed content
 //	search       for sites you own: Google Search Console (index status,
 //	             queries, sitemaps) and Bing Webmaster Tools (backlinks)
+//	content      main text via trafilatura (saved to content.md), outline,
+//	             title/h1 agreement, link text
+//	site         with -crawl N: advertools crawls the site; broken links,
+//	             duplicates, sitemap health, orphans, hreflang return links
 //	links        broken links on the page (first -links of them)
 //
 // Settings (env or ~/.config/commandcenter/sitecheck.env): PAGESPEED_API_KEY,
@@ -105,7 +109,7 @@ func (r *report) fact(k string, v any) {
 	r.mu.Unlock()
 }
 
-var areaOrder = []string{"basics", "performance", "search", "social", "seo", "security", "links"}
+var areaOrder = []string{"basics", "performance", "search", "seo", "content", "site", "social", "security", "links"}
 
 func (r *report) sort() {
 	rank := map[string]int{}
@@ -175,6 +179,7 @@ type options struct {
 	psiKey     string
 	lighthouse string
 	search     bool
+	crawl      int
 	userAgent  string
 }
 
@@ -196,6 +201,7 @@ func main() {
 	strategy := flag.String("strategy", "mobile,desktop", "PageSpeed strategies: mobile, desktop or both")
 	flag.StringVar(&o.lighthouse, "lighthouse", "auto", "local Lighthouse: auto (if PageSpeed fails), always (skip PageSpeed) or off")
 	noSearch := flag.Bool("no-search", false, "skip Google Search Console and Bing Webmaster data")
+	flag.IntVar(&o.crawl, "crawl", 0, "also crawl up to N pages of the site (sitemap first) with advertools and run cross-page checks")
 	flag.IntVar(&o.links, "links", 40, "how many links on the page to check (0 skips)")
 	flag.StringVar(&o.outDir, "out", "", "folder to save the share image in (default: a new temp folder)")
 	flag.DurationVar(&o.timeout, "timeout", 20*time.Second, "timeout per HTTP request (PageSpeed gets 2 minutes)")
@@ -281,9 +287,13 @@ func run(ctx context.Context, target *url.URL, o options) (*report, error) {
 	do(func() { checkBasics(ctx, r, f, pg, d) })
 	do(func() { checkSEO(ctx, r, f, pg, d) })
 	do(func() { checkSocial(ctx, r, f, pg, o.outDir) })
+	do(func() { checkContent(ctx, r, pg, d, o.outDir) })
 	do(func() { checkSecurity(r, pg, d) })
 	if o.search {
 		do(func() { checkSearch(ctx, r, pg.final, time.Now()) })
+	}
+	if o.crawl > 0 {
+		do(func() { checkSite(ctx, r, f, pg, o.crawl, o.outDir) })
 	}
 	if o.links > 0 {
 		do(func() { checkLinks(ctx, r, f, pg, d, o.links) })

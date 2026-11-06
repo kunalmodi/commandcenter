@@ -7,15 +7,30 @@ import (
 )
 
 // A deliberately small HTML scanner: enough to read the tags that matter for
-// SEO and share previews (title, meta, link, h1, img, a, script, iframe, html)
+// SEO and share previews (title, meta, link, headings, img, a, script, html)
 // without a third-party parser. It skips comments, and treats script, style,
 // title and textarea contents as raw text.
 
 type tag struct {
 	name  string
 	attrs map[string]string
-	text  string // inner text, only for raw-text elements and h1
+	text  string // inner text: raw-text elements, headings (h1-h6) and links
+	inner string // raw inner HTML, for links only
 }
+
+// asciiLower lowercases ASCII letters only, so byte offsets stay identical to
+// the original (strings.ToLower can change the length of some UTF-8 text).
+func asciiLower(s string) string {
+	b := []byte(s)
+	for i, c := range b {
+		if c >= 'A' && c <= 'Z' {
+			b[i] = c + 32
+		}
+	}
+	return string(b)
+}
+
+var innerText = map[string]bool{"h1": true, "h2": true, "h3": true, "h4": true, "h5": true, "h6": true, "a": true}
 
 func (t tag) attr(k string) string { return t.attrs[k] }
 
@@ -23,7 +38,7 @@ var rawText = map[string]bool{"script": true, "style": true, "title": true, "tex
 
 func scanTags(doc string) []tag {
 	var out []tag
-	lower := strings.ToLower(doc)
+	lower := asciiLower(doc)
 	i := 0
 	for i < len(doc) {
 		lt := strings.IndexByte(doc[i:], '<')
@@ -73,10 +88,12 @@ func scanTags(doc string) []tag {
 				t.text = cleanText(t.text)
 			}
 			i += c
-		case name == "h1":
-			c := strings.Index(lower[i:], "</h1")
-			if c >= 0 {
+		case innerText[name]:
+			if c := strings.Index(lower[i:], "</"+name); c >= 0 && c < 64<<10 {
 				t.text = cleanText(stripTags(doc[i : i+c]))
+				if name == "a" {
+					t.inner = doc[i : i+c]
+				}
 			}
 		}
 		out = append(out, t)

@@ -217,21 +217,53 @@ func dedupe(s []string) []string {
 
 func checkImagesAlt(r *report, d *doc) {
 	imgs := d.all("img")
-	missing := 0
-	var example string
+	missing, emptyBig := 0, 0
+	var exMissing, exEmpty string
 	for _, t := range imgs {
-		if _, ok := t.attrs["alt"]; !ok {
+		alt, ok := t.attrs["alt"]
+		switch {
+		case !ok:
 			missing++
-			if example == "" {
-				example = t.attr("src")
+			if exMissing == "" {
+				exMissing = t.attr("src")
+			}
+		case strings.TrimSpace(alt) == "":
+			// alt="" means "decorative". Fine for icons and flourishes, but
+			// photos big enough to be content (products, articles) need words.
+			src := strings.ToLower(t.attr("src"))
+			if strings.Contains(src, ".svg") || strings.HasPrefix(src, "data:") {
+				continue // icons, almost always
+			}
+			if w := atoiOr(t.attr("width"), 0); w == 0 || w >= 150 {
+				emptyBig++
+				if exEmpty == "" {
+					exEmpty = t.attr("src")
+				}
 			}
 		}
 	}
 	if missing > 0 {
-		r.add("seo", warn, "Image alt text", "%d of %d <img> have no alt attribute (use alt=\"\" for decorative ones), e.g. %s", missing, len(imgs), example)
-	} else if len(imgs) > 0 {
+		r.add("seo", warn, "Image alt text", "%d of %d <img> have no alt attribute (use alt=\"\" only for decorative ones), e.g. %s", missing, len(imgs), exMissing)
+	}
+	if emptyBig >= 3 {
+		r.add("seo", warn, "Empty image alt", "%d images of 150px+ have alt=\"\", marking them decorative. If they're product or content photos, describe them (e.g. the product name) for Google Images and screen readers. E.g. %s", emptyBig, exEmpty)
+	} else if missing == 0 && len(imgs) > 0 {
 		r.add("seo", pass, "Image alt text", "all %d images have alt", len(imgs))
 	}
+}
+
+func atoiOr(s string, def int) int {
+	n := 0
+	for _, c := range strings.TrimSuffix(strings.TrimSpace(s), "px") {
+		if c < '0' || c > '9' {
+			return def
+		}
+		n = n*10 + int(c-'0')
+	}
+	if s == "" {
+		return def
+	}
+	return n
 }
 
 // checkRobotsTxt reports whether robots.txt blocks this page for Googlebot

@@ -18,6 +18,8 @@ sitecheck -json https://example.com/      # machine-readable
 | seo | title, description, h1, lang, viewport, canonical, noindex (meta and header), robots.txt per crawler, sitemap, JSON-LD validity, alt text |
 | security | HSTS, CSP, nosniff, frame protection, referrer policy, version-leaking headers, mixed content |
 | links | broken links (the first `-links` N, same-site first) |
+| content | main text via **trafilatura** (saved to `content.md`), word count, heading outline, title vs h1, vague, repeated and empty link text |
+| site | `-crawl N`: **advertools** crawls the site (sitemap first, obeys robots.txt); broken internal URLs with their linking page, duplicate titles and descriptions, missing tags, sitemap entries that redirect, error or are noindexed, orphan pages, hreflang return links, site-wide alt and link text (rows saved to `crawl.jl`) |
 | search | sites you own: Google Search Console (index status, Google's canonical, last crawl, rich results, 28 days of clicks, impressions and positions, top and striking-distance queries, sitemaps) and Bing Webmaster Tools (backlinks, linking pages) |
 
 ## Your sites and other people's
@@ -39,5 +41,26 @@ Search data is optional: set `GSC_SERVICE_ACCOUNT_FILE` (recommended) or
 `BING_WEBMASTER_API_KEY`. Setup steps are in `config/sitecheck.env.example`.
 Access is read-only: the Google scope is `webmasters.readonly`.
 
-Flags: `-json`, `-pass`, `-no-psi`, `-no-search`, `-strategy mobile,desktop`,
+## Open-source tools underneath
+
+sitecheck does the rules and the glue, and leaves extraction and crawling to
+established tools. Each one is pinned and fetched on first use:
+
+| Tool | Version | Run via | Used for |
+| --- | --- | --- | --- |
+| [trafilatura](https://github.com/adbar/trafilatura) | 2.3.1 | `uvx` | main-text extraction |
+| [advertools](https://github.com/eliasdabbas/advertools) (Scrapy) | 0.18.0 | `uvx` | site crawl (`-crawl`) |
+| [Lighthouse](https://github.com/GoogleChrome/lighthouse) | 13 | `npx` | fallback when PageSpeed Insights is unavailable |
+
+If Claude Code asks before running them, these allow rules cover exactly those
+commands:
+
+```
+"Bash(uvx trafilatura@2.3.1:*)", "Bash(uvx --from advertools==0.18.0:*)", "Bash(npx -y lighthouse@13:*)"
+```
+
+They need `uv` (`brew install uv`) and Node.js. Change a pin in `tools.go` and
+here together.
+
+Flags: `-json`, `-pass`, `-no-psi`, `-no-search`, `-crawl N`, `-strategy mobile,desktop`,
 `-lighthouse auto|always|off`, `-links 40`, `-out DIR`, `-timeout 20s`.

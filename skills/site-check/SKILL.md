@@ -22,7 +22,8 @@ If `sitecheck` is not on PATH, build it from the commandcenter repo
 Useful flags: `-json` (structured output), `-pass` (also list passing checks),
 `-no-psi` (skip performance, about 1s instead of about 30s), `-strategy mobile`,
 `-links 0` (skip the broken-link check), `-lighthouse always|off`,
-`-no-search` (skip Search Console and Bing).
+`-no-search` (skip Search Console and Bing), `-crawl N` (also crawl up to N pages
+of the site; see below).
 
 It prints findings grouped by area, each marked FAIL, WARN, INFO or PASS:
 
@@ -31,7 +32,9 @@ It prints findings grouped by area, each marked FAIL, WARN, INFO or PASS:
 | basics | status, HTTPS and the http→https redirect, redirect chains, TLS expiry, compression, HTTP/2, soft 404s, favicon |
 | performance | PageSpeed Insights mobile and desktop: Lighthouse scores, real-user Core Web Vitals (LCP, INP, CLS), top opportunities, failing accessibility, SEO and best-practice audits |
 | social | Open Graph and X card tags *as the crawlers see them* (the page is refetched with the facebookexternalhit and Twitterbot user agents), plus the share image's reachability, format, size, dimensions and aspect ratio |
-| seo | title, meta description, h1, lang, viewport, canonical, noindex, robots.txt (also for the preview crawlers), sitemap, JSON-LD, image alt text |
+| seo | title, meta description, h1, lang, viewport, canonical, noindex, robots.txt (also for the preview crawlers), sitemap, JSON-LD, image alt text (including content photos marked `alt=""`) |
+| content | main text extracted by **trafilatura** (saved to `content.md`), word count, heading outline, title vs h1, vague or repeated link text, links with no text |
+| site | only with `-crawl N`: **advertools** crawls the site (sitemap first, obeys robots.txt). Covers broken internal URLs with the page linking to them, duplicate titles and descriptions, missing tags, sitemap entries that redirect, error, are noindexed or canonicalise elsewhere, orphan pages, hreflang return links, and site-wide alt text and link text. The rows are saved to `crawl.jl` |
 | security | HSTS, CSP, nosniff, clickjacking, referrer policy, leaked server versions, mixed content |
 | links | broken links on the page (the first 40, same-site first) |
 | search | **your sites only:** Google Search Console (whether the page is indexed, Google's chosen canonical, last crawl, rich results, the last 28 days of clicks, impressions and positions, top and "striking-distance" queries, submitted sitemaps) and Bing Webmaster Tools (backlinks and linking pages) |
@@ -69,6 +72,11 @@ Adjust the report to match:
 - **Be polite to sites you don't own.** One run makes about 50 light requests,
   which is fine. Don't loop sitecheck over many pages of someone else's site. Use
   `-links 0` for repeat runs.
+- **Crawl size.** On the user's own site, crawl it all: use `-crawl` a bit above
+  the sitemap size. It runs about 70 pages a second at 4 connections, so 1,300
+  pages took 19s. Orphan pages are only judged when the crawl covers 90% of the
+  sitemap. On someone else's site, keep `-crawl` to 50 or less, and only when the
+  user asks for a site-level look.
 
 **Performance source.** It uses the PageSpeed Insights API when it can. The
 keyless quota is shared and often exhausted (HTTP 429). It then falls back to a
@@ -102,7 +110,29 @@ If the user wants to *see* the previews, sketch them as a small HTML artifact
 using the real title, description, site name and image. Label it as an
 approximation: each platform's exact layout changes often.
 
-## 3. Interpret, don't just relay
+## 3. Read the content
+
+The `content` file (`content.md`) holds the heading outline and the main text as
+trafilatura extracted it. **Read it.** That is where the SEO judgment the rules
+can't make happens:
+
+- **What search is this page trying to win?** Say it as a query a person would
+  type. If you can't tell, neither can Google. That's the finding.
+- **Do the title, h1, opening paragraph and subheadings all aim at that query**,
+  in the words searchers use? A clever tagline in the h1 ("Thoughtful finds") is
+  weaker than a plain one ("Electrolytes for GLP-1 users").
+- **Coverage.** What would someone searching that query expect to find that's
+  missing? Comparisons, sizes and prices, who it's for, how to use it, sources.
+- **Trust, for health, money and safety topics.** Google holds these to a
+  higher standard ("Your Money or Your Life"). Is there an author or reviewer,
+  dates, sources and disclosures?
+- trafilatura is tuned for articles. On listing pages (home, categories) it
+  keeps the card blurbs but may drop names. Judge those pages from the outline
+  instead.
+
+Give two or three concrete content suggestions, not a generic checklist.
+
+## 4. Interpret, don't just relay
 
 - **Field data beats lab data.** Google ranks with real-user Core Web Vitals
   (the "real users (p75)" line, from the Chrome UX Report). Lighthouse scores are
@@ -124,7 +154,7 @@ approximation: each platform's exact layout changes often.
   the cause. The fix is server-side rendering or static meta tags.
 - Treat INFO lines as optional polish. Mention a few only if they're cheap wins.
 
-## 4. Report back
+## 5. Report back
 
 Keep it short and ordered by impact:
 
@@ -140,6 +170,14 @@ Keep it short and ordered by impact:
 
 Don't paste the raw report unless asked.
 
+## Tools underneath
+
+sitecheck calls pinned open-source tools: **trafilatura 2.3.1** (`uvx`),
+**advertools 0.18.0** (`uvx`), and **Lighthouse 13** (`npx`, when PageSpeed is
+unavailable). The first run downloads each one. If Claude Code blocks one, the
+user needs an allow rule for that exact command (see the README). Don't look for
+a way around the block.
+
 ## Manual checks to suggest
 
 These need the user's own login, or a person looking at the result:
@@ -154,5 +192,6 @@ These need the user's own login, or a person looking at the result:
 - **Google Rich Results Test** (search.google.com/test/rich-results) when the page
   has JSON-LD, and **Search Console → URL Inspection** for indexing status if the
   user has access.
-- For a site rather than a page, run sitecheck on one URL per template (home, a
-  blog post, a product page) rather than just the homepage.
+- For a site rather than a page, use `-crawl` for the site-wide checks. Then
+  run sitecheck (without `-crawl`) on one URL per template (a blog post, a
+  product page) to read their content too.
