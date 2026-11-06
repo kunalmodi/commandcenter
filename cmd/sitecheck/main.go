@@ -17,9 +17,12 @@
 //	basics       status, HTTPS and redirects, TLS expiry, compression, HTTP/2,
 //	             soft 404s, favicon
 //	security     common security headers, mixed content
+//	search       for sites you own: Google Search Console (index status,
+//	             queries, sitemaps) and Bing Webmaster Tools (backlinks)
 //	links        broken links on the page (first -links of them)
 //
-// Settings: PAGESPEED_API_KEY (env or ~/.config/commandcenter/sitecheck.env).
+// Settings (env or ~/.config/commandcenter/sitecheck.env): PAGESPEED_API_KEY,
+// GSC_SERVICE_ACCOUNT_FILE or GOOGLE_OAUTH_CLIENT_FILE, BING_WEBMASTER_API_KEY.
 // Without a key, PageSpeed Insights often answers 429 (shared quota).
 package main
 
@@ -69,6 +72,10 @@ type report struct {
 	Findings []finding         `json:"findings"`
 	Files    map[string]string `json:"files,omitempty"` // e.g. share image saved for viewing
 	Facts    map[string]any    `json:"facts,omitempty"`
+	// Owned is set when search data was looked up: true if the site is
+	// verified in one of the user's Search Console or Bing accounts.
+	Owned      *bool    `json:"owned,omitempty"`
+	VerifiedIn []string `json:"verified_in,omitempty"`
 }
 
 func (r *report) add(area string, l level, check, detail string, args ...any) {
@@ -98,7 +105,7 @@ func (r *report) fact(k string, v any) {
 	r.mu.Unlock()
 }
 
-var areaOrder = []string{"basics", "performance", "social", "seo", "security", "links"}
+var areaOrder = []string{"basics", "performance", "search", "social", "seo", "security", "links"}
 
 func (r *report) sort() {
 	rank := map[string]int{}
@@ -122,6 +129,13 @@ func (r *report) writeText(w io.Writer, showPass bool) {
 	fmt.Fprintf(w, "sitecheck %s: %s\n", version, r.URL)
 	if r.Final != "" && r.Final != r.URL {
 		fmt.Fprintf(w, "final URL: %s\n", r.Final)
+	}
+	if r.Owned != nil {
+		if *r.Owned {
+			fmt.Fprintf(w, "your site: verified in %s\n", strings.Join(r.VerifiedIn, " and "))
+		} else {
+			fmt.Fprintln(w, "not verified as your site: public checks only, no search-engine data")
+		}
 	}
 	fmt.Fprintf(w, "%d FAIL, %d WARN, %d INFO, %d PASS\n", counts[fail], counts[warn], counts[info], counts[pass])
 	area := ""
@@ -160,6 +174,7 @@ type options struct {
 	timeout    time.Duration
 	psiKey     string
 	lighthouse string
+	search     bool
 	userAgent  string
 }
 
@@ -167,17 +182,25 @@ const browserUA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/5
 
 func main() {
 	env.Load("sitecheck")
+	if len(os.Args) > 2 && os.Args[1] == "auth" && os.Args[2] == "google" {
+		if err := authGoogle(context.Background(), os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, "sitecheck:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	var o options
 	asJSON := flag.Bool("json", false, "print the report as JSON")
 	showPass := flag.Bool("pass", false, "also list checks that passed")
 	noPSI := flag.Bool("no-psi", false, "skip PageSpeed Insights")
 	strategy := flag.String("strategy", "mobile,desktop", "PageSpeed strategies: mobile, desktop or both")
 	flag.StringVar(&o.lighthouse, "lighthouse", "auto", "local Lighthouse: auto (if PageSpeed fails), always (skip PageSpeed) or off")
+	noSearch := flag.Bool("no-search", false, "skip Google Search Console and Bing Webmaster data")
 	flag.IntVar(&o.links, "links", 40, "how many links on the page to check (0 skips)")
 	flag.StringVar(&o.outDir, "out", "", "folder to save the share image in (default: a new temp folder)")
 	flag.DurationVar(&o.timeout, "timeout", 20*time.Second, "timeout per HTTP request (PageSpeed gets 2 minutes)")
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: sitecheck [flags] URL")
+		fmt.Fprintln(os.Stderr, "usage: sitecheck [flags] URL\n       sitecheck auth google   (one-time Search Console sign-in)")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -186,6 +209,7 @@ func main() {
 		os.Exit(2)
 	}
 	o.psi = !*noPSI
+	o.search = !*noSearch
 	o.strategy = splitList(*strategy)
 	o.psiKey = os.Getenv("PAGESPEED_API_KEY")
 	o.userAgent = browserUA
@@ -258,6 +282,9 @@ func run(ctx context.Context, target *url.URL, o options) (*report, error) {
 	do(func() { checkSEO(ctx, r, f, pg, d) })
 	do(func() { checkSocial(ctx, r, f, pg, o.outDir) })
 	do(func() { checkSecurity(r, pg, d) })
+	if o.search {
+		do(func() { checkSearch(ctx, r, pg.final, time.Now()) })
+	}
 	if o.links > 0 {
 		do(func() { checkLinks(ctx, r, f, pg, d, o.links) })
 	}

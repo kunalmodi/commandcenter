@@ -18,6 +18,15 @@ sitecheck -json https://example.com/      # machine-readable
 | seo | title, description, h1, lang, viewport, canonical, noindex (meta and header), robots.txt per crawler, sitemap, JSON-LD validity, alt text |
 | security | HSTS, CSP, nosniff, frame protection, referrer policy, version-leaking headers, mixed content |
 | links | broken links (the first `-links` N, same-site first) |
+| search | sites you own: Google Search Console (index status, Google's canonical, last crawl, rich results, 28 days of clicks, impressions and positions, top and striking-distance queries, sitemaps) and Bing Webmaster Tools (backlinks, linking pages) |
+
+## Your sites and other people's
+
+Most checks use only what any visitor can see, so they work on any site. The
+search area needs the site verified in your own Search Console or Bing account,
+and sitecheck works this out by itself. If an account is set up, the report
+starts with `your site: verified in ...` or `not verified as your site`. On
+someone else's site the search section is a single INFO line, not a warning.
 
 Performance uses the PageSpeed Insights API. Set `PAGESPEED_API_KEY` in
 `~/.config/commandcenter/sitecheck.env` (see `config/sitecheck.env.example`),
@@ -25,5 +34,10 @@ since the keyless quota is shared and often exhausted. When the API fails,
 `-lighthouse auto` (the default) runs Lighthouse locally in headless Chrome,
 either from PATH or via `npx -y lighthouse@13`. That gives lab data only.
 
-Flags: `-json`, `-pass`, `-no-psi`, `-strategy mobile,desktop`,
+Search data is optional: set `GSC_SERVICE_ACCOUNT_FILE` (recommended) or
+`GOOGLE_OAUTH_CLIENT_FILE` plus a one-time `sitecheck auth google`, and
+`BING_WEBMASTER_API_KEY`. Setup steps are in `config/sitecheck.env.example`.
+Access is read-only: the Google scope is `webmasters.readonly`.
+
+Flags: `-json`, `-pass`, `-no-psi`, `-no-search`, `-strategy mobile,desktop`,
 `-lighthouse auto|always|off`, `-links 40`, `-out DIR`, `-timeout 20s`.

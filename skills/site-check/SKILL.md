@@ -1,6 +1,6 @@
 ---
 name: site-check
-description: Audit a web page for launch quality. Covers PageSpeed / Core Web Vitals, how its link preview looks when shared (Facebook, X, LinkedIn, iMessage, Slack), SEO basics, and HTTPS, security headers and broken links. Use when the user asks to check, audit or review a URL or website, asks "is this page ready to launch/share", asks why a link preview looks wrong, or wants SEO or performance feedback on a live page.
+description: Audit a web page for launch quality. Covers PageSpeed / Core Web Vitals, how its link preview looks when shared (Facebook, X, LinkedIn, iMessage, Slack), SEO basics, and HTTPS, security headers and broken links. For the user's own sites it adds Google Search Console data (indexing, search queries and positions) and Bing backlinks. Use when the user asks to check, audit or review a URL or website, asks "is this page ready to launch/share", asks why a link preview looks wrong, or wants SEO or performance feedback on a live page.
 ---
 
 # Site check
@@ -21,7 +21,8 @@ If `sitecheck` is not on PATH, build it from the commandcenter repo
 
 Useful flags: `-json` (structured output), `-pass` (also list passing checks),
 `-no-psi` (skip performance, about 1s instead of about 30s), `-strategy mobile`,
-`-links 0` (skip the broken-link check), `-lighthouse always|off`.
+`-links 0` (skip the broken-link check), `-lighthouse always|off`,
+`-no-search` (skip Search Console and Bing).
 
 It prints findings grouped by area, each marked FAIL, WARN, INFO or PASS:
 
@@ -33,6 +34,41 @@ It prints findings grouped by area, each marked FAIL, WARN, INFO or PASS:
 | seo | title, meta description, h1, lang, viewport, canonical, noindex, robots.txt (also for the preview crawlers), sitemap, JSON-LD, image alt text |
 | security | HSTS, CSP, nosniff, clickjacking, referrer policy, leaked server versions, mixed content |
 | links | broken links on the page (the first 40, same-site first) |
+| search | **your sites only:** Google Search Console (whether the page is indexed, Google's chosen canonical, last crawl, rich results, the last 28 days of clicks, impressions and positions, top and "striking-distance" queries, submitted sitemaps) and Bing Webmaster Tools (backlinks and linking pages) |
+
+### Your site or someone else's
+
+You don't have to say which. The report's header decides it from the accounts
+that are set up:
+
+- `your site: verified in Google Search Console (...)`: the site is a verified
+  property in the user's Search Console or Bing account, so the search section
+  has real data from the engines.
+- `not verified as your site`: the accounts are set up, but this site isn't in
+  them. It's a competitor, a client, or something the user is just curious
+  about. Every other area still works, because it only uses what any visitor
+  can see.
+- No such line: neither account is set up yet. Mention once that setting one up
+  adds index and query data for the user's own sites (see the README). Don't
+  repeat it every run.
+
+Adjust the report to match:
+
+- **Your site:** lead with the search data when it's there. A page that isn't
+  indexed, or where Google picked a different canonical, outranks anything a
+  public check found. Striking-distance queries (ranking 5-20 with real demand)
+  are the cheapest SEO wins. Name them, and say where on the page to use those
+  words.
+- **Someone else's site:** don't present the missing search data as a gap or a
+  problem. Phrase fixes as observations ("their previews would break because
+  …"). For a client, say they can add the user's Google account (or the service
+  account's email) as a user in Search Console, and verify the site in Bing, to
+  get the full picture. Their backlinks and keyword rankings aren't available
+  from any free source; that needs a paid data API (DataForSEO is the cheapest).
+  Say so if the user asks.
+- **Be polite to sites you don't own.** One run makes about 50 light requests,
+  which is fine. Don't loop sitecheck over many pages of someone else's site. Use
+  `-links 0` for repeat runs.
 
 **Performance source.** It uses the PageSpeed Insights API when it can. The
 keyless quota is shared and often exhausted (HTTP 429). It then falls back to a
