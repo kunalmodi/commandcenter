@@ -19,7 +19,7 @@ sitecheck -json https://example.com/      # machine-readable
 | security | HSTS, CSP, nosniff, frame protection, referrer policy, version-leaking headers, mixed content |
 | links | broken links (the first `-links` N, same-site first) |
 | content | main text via **trafilatura** (saved to `content.md`), word count, heading outline, title vs h1, vague, repeated and empty link text |
-| aeo | AI search and assistants: AI crawler rules in robots.txt (answer vs training crawlers), live fetches with AI user agents (catches firewall/Cloudflare blocks robots.txt doesn't show), text without JavaScript, entity/author/date markup, FAQ structure, Content-Signal, llms.txt |
+| aeo | AI search and assistants: AI crawler rules in robots.txt (answer vs training crawlers), live fetches with AI user agents (catches firewall/Cloudflare blocks robots.txt doesn't show), text without JavaScript, entity/author/date markup, answer-shaped structure, evidence density (figures, quotations, sources), Content-Signal, llms.txt; with `BRAVE_SEARCH_API_KEY`, where the page ranks on Brave Search (Claude's search index) for up to 3 questions |
 | site | `-crawl N`: **advertools** crawls the site (sitemap first, obeys robots.txt); broken internal URLs with their linking page, duplicate titles and descriptions, missing tags, sitemap entries that redirect, error or are noindexed, orphan pages, hreflang return links, site-wide alt and link text (rows saved to `crawl.jl`) |
 | search | sites you own: Google Search Console (index status, Google's canonical, last crawl, rich results, 28 days of clicks, impressions and positions, top and striking-distance queries, sitemaps) and Bing Webmaster Tools (backlinks, linking pages) |
 
@@ -39,7 +39,7 @@ either from PATH or via `npx -y lighthouse@13`. That gives lab data only.
 
 Search data is optional: set `GSC_SERVICE_ACCOUNT_FILE` (recommended) or
 `GOOGLE_OAUTH_CLIENT_FILE` plus a one-time `sitecheck auth google`, and
-`BING_WEBMASTER_API_KEY`. Setup steps are in `config/sitecheck.env.example`.
+`BING_WEBMASTER_API_KEY`, and `BRAVE_SEARCH_API_KEY` for the Brave rank check (works on any site). Setup steps are in `config/sitecheck.env.example`.
 Access is read-only: the Google scope is `webmasters.readonly`.
 
 ## Open-source tools underneath
@@ -63,5 +63,5 @@ commands:
 They need `uv` (`brew install uv`) and Node.js. Change a pin in `tools.go` and
 here together.
 
-Flags: `-json`, `-pass`, `-no-psi`, `-no-search`, `-crawl N`, `-strategy mobile,desktop`,
+Flags: `-json`, `-pass`, `-no-psi`, `-no-search`, `-no-brave`, `-q "question"` (repeatable), `-crawl N`, `-strategy mobile,desktop`,
 `-lighthouse auto|always|off`, `-links 40`, `-out DIR`, `-timeout 20s`.

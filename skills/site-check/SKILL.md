@@ -22,7 +22,7 @@ If `sitecheck` is not on PATH, build it from the commandcenter repo
 Useful flags: `-json` (structured output), `-pass` (also list passing checks),
 `-no-psi` (skip performance, about 1s instead of about 30s), `-strategy mobile`,
 `-links 0` (skip the broken-link check), `-lighthouse always|off`,
-`-no-search` (skip Search Console and Bing), `-crawl N` (also crawl up to N pages
+`-no-search` (skip Search Console and Bing), `-q "question"` (repeatable, up to 3: the questions to check the Brave rank for), `-no-brave`, `-crawl N` (also crawl up to N pages
 of the site; see below).
 
 It prints findings grouped by area, each marked FAIL, WARN, INFO or PASS:
@@ -34,7 +34,7 @@ It prints findings grouped by area, each marked FAIL, WARN, INFO or PASS:
 | social | Open Graph and X card tags *as the crawlers see them* (the page is refetched with the facebookexternalhit and Twitterbot user agents), plus the share image's reachability, format, size, dimensions and aspect ratio |
 | seo | title, meta description, h1, lang, viewport, canonical, noindex, robots.txt (also for the preview crawlers), sitemap, JSON-LD, image alt text (including content photos marked `alt=""`) |
 | content | main text extracted by **trafilatura** (saved to `content.md`), word count, heading outline, title vs h1, vague or repeated link text, links with no text |
-| aeo | answer engines and AI search (read [aeo.md](aeo.md) first) (ChatGPT, Claude, Perplexity, AI Overviews, Copilot): robots.txt rules for each AI crawler, split into ones that answer or cite (blocking them hides you) and ones that only collect training data (a choice); live fetches with AI crawlers' user agents to catch firewall or Cloudflare bot blocking that contradicts robots.txt; whether the text is in the server HTML (most AI crawlers don't run JavaScript); entity, author and date markup; FAQ-style structure; Content-Signal; llms.txt |
+| aeo | answer engines and AI search (read [aeo.md](aeo.md) first) (ChatGPT, Claude, Perplexity, AI Overviews, Copilot): robots.txt rules for each AI crawler, split into ones that answer or cite (blocking them hides you) and ones that only collect training data (a choice); live fetches with AI crawlers' user agents to catch firewall or Cloudflare bot blocking that contradicts robots.txt; whether the text is in the server HTML (most AI crawlers don't run JavaScript); entity, author and date markup; FAQ-style structure; evidence density; Content-Signal; llms.txt; and, with a Brave key, the page's rank on Brave Search (Claude's index) |
 | site | only with `-crawl N`: **advertools** crawls the site (sitemap first, obeys robots.txt). Covers broken internal URLs with the page linking to them, duplicate titles and descriptions, missing tags, sitemap entries that redirect, error, are noindexed or canonicalise elsewhere, orphan pages, hreflang return links, and site-wide alt text and link text. The rows are saved to `crawl.jl` |
 | security | HSTS, CSP, nosniff, clickjacking, referrer policy, leaked server versions, mixed content |
 | links | broken links on the page (the first 40, same-site first) |
@@ -176,9 +176,14 @@ checks, which are cheap and real:
 - **Prompt sampling.** Ask ChatGPT (with search), Claude, Perplexity and Google
   (to trigger an AI Overview) the two or three questions the page should win,
   from step 3. Note who gets cited, several times over, since answers vary.
-- **Retrieval rank.** Search the same questions on bing.com (ChatGPT's main
-  source) and search.brave.com (Claude's). If the page isn't on page one there,
-  that's the problem to fix first.
+- **Retrieval rank.** sitecheck's `Brave rank (Claude's search)` lines cover
+  Brave when `BRAVE_SEARCH_API_KEY` is set. They use Search Console's top
+  queries for the user's own sites, else phrases from the title and h1 (a guess,
+  so a miss there is only INFO). When you know the questions the page should
+  win, pass them with `-q`. "ahead" names the sites Claude would likely cite
+  instead; look at what they do better. Bing has no public search API any more,
+  so check bing.com (ChatGPT's main source) by hand. If the page isn't in the
+  top results there, fix that before anything else.
 - **Analytics and logs.** Filter for `utm_source=chatgpt.com`, and look for
   `ChatGPT-User`, `Claude-User` and `Perplexity-User` in the server logs.
   Those are live fetches made to answer someone's question.

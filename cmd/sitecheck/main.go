@@ -23,13 +23,14 @@
 //	             title/h1 agreement, link text
 //	aeo          answer engines / AI search: AI crawler access (robots.txt and
 //	             live fetches), text without JavaScript, entity/author/date
-//	             markup, answer-shaped structure, llms.txt
+//	             markup, answer-shaped structure, evidence, llms.txt, and
+//	             with BRAVE_SEARCH_API_KEY the page's Brave rank (Claude's index)
 //	site         with -crawl N: advertools crawls the site; broken links,
 //	             duplicates, sitemap health, orphans, hreflang return links
 //	links        broken links on the page (first -links of them)
 //
 // Settings (env or ~/.config/commandcenter/sitecheck.env): PAGESPEED_API_KEY,
-// GSC_SERVICE_ACCOUNT_FILE or GOOGLE_OAUTH_CLIENT_FILE, BING_WEBMASTER_API_KEY.
+// GSC_SERVICE_ACCOUNT_FILE or GOOGLE_OAUTH_CLIENT_FILE, BING_WEBMASTER_API_KEY, BRAVE_SEARCH_API_KEY.
 // Without a key, PageSpeed Insights often answers 429 (shared quota).
 package main
 
@@ -184,7 +185,15 @@ type options struct {
 	search     bool
 	crawl      int
 	userAgent  string
+	brave      bool
+	queries    []string
 }
+
+// multiFlag collects a repeatable string flag.
+type multiFlag []string
+
+func (m *multiFlag) String() string     { return strings.Join(*m, ", ") }
+func (m *multiFlag) Set(v string) error { *m = append(*m, v); return nil }
 
 const browserUA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36 sitecheck/" + version
 
@@ -204,6 +213,9 @@ func main() {
 	strategy := flag.String("strategy", "mobile,desktop", "PageSpeed strategies: mobile, desktop or both")
 	flag.StringVar(&o.lighthouse, "lighthouse", "auto", "local Lighthouse: auto (if PageSpeed fails), always (skip PageSpeed) or off")
 	noSearch := flag.Bool("no-search", false, "skip Google Search Console and Bing Webmaster data")
+	noBrave := flag.Bool("no-brave", false, "skip the Brave Search rank check")
+	var queries multiFlag
+	flag.Var(&queries, "q", "a question the page should rank for on Brave (repeatable, up to 3); default: top Search Console queries, else the title and h1")
 	flag.IntVar(&o.crawl, "crawl", 0, "also crawl up to N pages of the site (sitemap first) with advertools and run cross-page checks")
 	flag.IntVar(&o.links, "links", 40, "how many links on the page to check (0 skips)")
 	flag.StringVar(&o.outDir, "out", "", "folder to save the share image in (default: a new temp folder)")
@@ -219,6 +231,8 @@ func main() {
 	}
 	o.psi = !*noPSI
 	o.search = !*noSearch
+	o.brave = !*noBrave
+	o.queries = queries
 	o.strategy = splitList(*strategy)
 	o.psiKey = os.Getenv("PAGESPEED_API_KEY")
 	o.userAgent = browserUA
@@ -293,9 +307,15 @@ func run(ctx context.Context, target *url.URL, o options) (*report, error) {
 	do(func() { checkContent(ctx, r, pg, d, o.outDir) })
 	do(func() { checkAEO(ctx, r, f, pg, d) })
 	do(func() { checkSecurity(r, pg, d) })
-	if o.search {
-		do(func() { checkSearch(ctx, r, pg.final, time.Now()) })
-	}
+	// Brave runs after Search Console so it can reuse the page's top queries.
+	do(func() {
+		if o.search {
+			checkSearch(ctx, r, pg.final, time.Now())
+		}
+		if o.brave {
+			checkBrave(ctx, r, pg.final, d, o.queries)
+		}
+	})
 	if o.crawl > 0 {
 		do(func() { checkSite(ctx, r, f, pg, o.crawl, o.outDir) })
 	}
