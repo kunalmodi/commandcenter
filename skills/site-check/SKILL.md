@@ -34,7 +34,7 @@ It prints findings grouped by area, each marked FAIL, WARN, INFO or PASS:
 | social | Open Graph and X card tags *as the crawlers see them* (the page is refetched with the facebookexternalhit and Twitterbot user agents), plus the share image's reachability, format, size, dimensions and aspect ratio |
 | seo | title, meta description, h1, lang, viewport, canonical, noindex, robots.txt (also for the preview crawlers), sitemap, JSON-LD, image alt text (including content photos marked `alt=""`) |
 | content | main text extracted by **trafilatura** (saved to `content.md`), word count, heading outline, title vs h1, vague or repeated link text, links with no text |
-| aeo | answer engines and AI search (read [aeo.md](aeo.md) first) (ChatGPT, Claude, Perplexity, AI Overviews, Copilot): robots.txt rules for each AI crawler, split into ones that answer or cite (blocking them hides you) and ones that only collect training data (a choice); live fetches with AI crawlers' user agents to catch firewall or Cloudflare bot blocking that contradicts robots.txt; whether the text is in the server HTML (most AI crawlers don't run JavaScript); entity, author and date markup; FAQ-style structure; evidence density; Content-Signal; llms.txt; and, with a Brave key, the page's rank on Brave Search (Claude's index) |
+| aeo | answer engines and AI search (read [aeo.md](aeo.md) first) (ChatGPT, Claude, Perplexity, AI Overviews, Copilot): robots.txt rules for each AI crawler, split into ones that answer or cite (blocking them hides you) and ones that only collect training data (a choice); live fetches with AI crawlers' user agents to catch firewall or Cloudflare bot blocking that contradicts robots.txt; whether the text is in the server HTML (most AI crawlers don't run JavaScript); entity, author and date markup; FAQ-style structure; evidence density; on article-type pages, a visible byline and the author page (photo, Person markup, sameAs); stock photos; Content-Signal; llms.txt; and, with a Brave key, the page's rank on Brave Search (Claude's index) |
 | site | only with `-crawl N`: **advertools** crawls the site (sitemap first, obeys robots.txt). Covers broken internal URLs with the page linking to them, duplicate titles and descriptions, missing tags, sitemap entries that redirect, error, are noindexed or canonicalise elsewhere, orphan pages, hreflang return links, and site-wide alt text and link text. The rows are saved to `crawl.jl` |
 | security | HSTS, CSP, nosniff, clickjacking, referrer policy, leaked server versions, mixed content |
 | links | broken links on the page (the first 40, same-site first) |
@@ -165,6 +165,17 @@ Weighing the `aeo` rules:
 - **Don't recommend llms.txt or AI-specific schema as fixes.** The evidence for
   both is nil, and Google says neither is needed. Entity markup is worth adding
   for ordinary search reasons only.
+- **Byline, author page and stock images are trust signals, not confirmed
+  ranking factors.** Google's guidance asks "who made this, and how?", and
+  first-hand pages did well in 2026's core updates (per SEO trackers, not
+  Google). Recommend a visible byline linked to an author page with a real
+  photo and credentials, and original photos over stock. Rank them below
+  access, indexing and evidence findings.
+- **Answer up top is your call, not a rule.** When reading `content.md`, say
+  whether the first paragraph after the headline answers the page's question
+  directly. If it opens with throat-clearing ("In today's world…"), suggest
+  leading with the answer. Don't call it an "agent summary" requirement: Google
+  says no AI-specific writing is needed.
 - **Don't promise citations.** Assistants' answers vary between runs, and
   nobody controls selection. Frame advice as raising the odds.
 

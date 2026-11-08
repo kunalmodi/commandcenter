@@ -23,7 +23,8 @@
 //	             title/h1 agreement, link text
 //	aeo          answer engines / AI search: AI crawler access (robots.txt and
 //	             live fetches), text without JavaScript, entity/author/date
-//	             markup, answer-shaped structure, evidence, llms.txt, and
+//	             markup, byline and author page, stock photos,
+//	             answer-shaped structure, evidence, llms.txt, and
 //	             with BRAVE_SEARCH_API_KEY the page's Brave rank (Claude's index)
 //	site         with -crawl N: advertools crawls the site; broken links,
 //	             duplicates, sitemap health, orphans, hreflang return links

@@ -95,7 +95,7 @@ func checkAEO(ctx context.Context, r *report, f *fetcher, pg *page, d *doc) {
 
 	// If the site turned our own browser-like request away, comparisons with
 	// AI crawlers and the page text mean nothing.
-	if pg.status != 200 || challengeRe.MatchString(pg.body) {
+	if pg.status != 200 || isChallenge(pg.body) {
 		r.add(a, info, "AI crawler comparison", "skipped: the site answered our own request with HTTP %d or a bot check, so there's nothing to compare against", pg.status)
 		checkLLMSTxt(ctx, r, f, pg)
 		return
@@ -117,7 +117,11 @@ func checkAEO(ctx context.Context, r *report, f *fetcher, pg *page, d *doc) {
 	}
 
 	// 4. Structured facts: who wrote it, when, what entity this is.
-	checkAEOSchema(r, d, pg)
+	art := checkAEOSchema(r, d, pg)
+
+	// Who wrote it, visibly, and whether the images are the site's own.
+	checkByline(ctx, r, f, pg, d, art)
+	checkStockImages(r, pg, d)
 
 	// 5. Answer-shaped structure (judgment of quality is left to the reader).
 	checkAnswerShape(r, d)
@@ -138,6 +142,17 @@ func contentSignals(robots string) string {
 }
 
 var challengeRe = regexp.MustCompile(`(?i)just a moment\.\.\.|cf-chl|challenge-platform|attention required|access denied|captcha|verify you are human|vercel security checkpoint`)
+
+// isChallenge spots bot-check pages. They are small, so a match deep inside a
+// big real page (a reCAPTCHA key for a newsletter form) doesn't count unless
+// it's in the title.
+func isChallenge(body string) bool {
+	if len(body) < 64<<10 {
+		return challengeRe.MatchString(body)
+	}
+	t, _ := parseDoc(body[:min(len(body), 16<<10)]).title()
+	return challengeRe.MatchString(t)
+}
 
 // checkAIFetch requests the page with AI crawler user agents and compares
 // with what a browser gets. Real crawlers come from published IP ranges, so a
@@ -171,7 +186,7 @@ func checkAIFetch(ctx context.Context, r *report, f *fetcher, pg *page, groups [
 			switch {
 			case p.status == 403 || p.status == 401 || p.status == 429 || p.status >= 500:
 				out[i].why = fmt.Sprintf("HTTP %d", p.status)
-			case challengeRe.MatchString(p.body) && !challengeRe.MatchString(pg.body):
+			case isChallenge(p.body) && !isChallenge(pg.body):
 				out[i].why = "got a bot challenge page"
 			case p.status == 200 && len(pg.body) > 5000 && len(p.body) < len(pg.body)/4:
 				out[i].why = fmt.Sprintf("got a much smaller page (%d vs %d bytes)", len(p.body), len(pg.body))
@@ -268,7 +283,8 @@ func ldHasType(o map[string]any, types ...string) bool {
 
 var articleTypes = []string{"Article", "BlogPosting", "NewsArticle", "TechArticle", "MedicalWebPage", "HowTo", "Recipe", "Review"}
 
-func checkAEOSchema(r *report, d *doc, pg *page) {
+// checkAEOSchema returns the page's article-like JSON-LD object, if any.
+func checkAEOSchema(r *report, d *doc, pg *page) map[string]any {
 	const a = "aeo"
 	var objs []map[string]any
 	for _, s := range d.all("script") {
@@ -356,6 +372,7 @@ func checkAEOSchema(r *report, d *doc, pg *page) {
 	if len(answerTypes) > 0 {
 		r.add(a, info, "Answer-friendly markup", "%s", strings.Join(answerTypes, ", "))
 	}
+	return art
 }
 
 func parseLooseDate(s string) (time.Time, bool) {
