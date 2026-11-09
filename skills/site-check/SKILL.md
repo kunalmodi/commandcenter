@@ -185,8 +185,29 @@ The rules can't tell whether assistants actually cite the site. Suggest these
 checks, which are cheap and real:
 
 - **Prompt sampling.** Ask ChatGPT (with search), Claude, Perplexity and Google
-  (to trigger an AI Overview) the two or three questions the page should win,
-  from step 3. Note who gets cited, several times over, since answers vary.
+  (to trigger an AI Overview) the questions the page should win. Do it
+  properly or the result misleads:
+  - Use clean sessions: ChatGPT temporary chats, Claude incognito. Memory,
+    custom instructions and **installed connectors** leak the user's own
+    product into answers. A mention that only came from a connector doesn't
+    count.
+  - Use 4-6 real buyer prompts ("best free X alternative", "how do I open a
+    .Y file", "is there a free tool to convert A to B"), each 2+ times per
+    assistant. Fan-outs vary between runs.
+  - Record three things per run: the search queries the assistant ran (Claude
+    shows them; ChatGPT no longer does, so use what it retrieved), the pages it
+    retrieved, and the pages it cited. "Never retrieved" and "retrieved but
+    not cited" need different fixes.
+  - Note prompts answered from memory without a search: there, only off-site
+    reputation counts.
+  - Feed the observed queries back in: `sitecheck -q "<query>"` shows where the
+    page ranks on Brave for the exact words Claude searched.
+- **Turn the results into pages.** See "What a field test showed" in
+  [aeo.md](aeo.md): give the facts the queries check in plain text, and build
+  the page types that actually get cited (help docs, pricing, single-purpose
+  tools, listings on others' sites). If the page was never retrieved, fix
+  discoverability (indexed in Bing, crawlable, server-rendered, titled with the
+  searchers' words) before rewriting anything.
 - **Retrieval rank.** sitecheck's `Brave rank (Claude's search)` lines cover
   Brave when `BRAVE_SEARCH_API_KEY` is set. They use Search Console's top
   queries for the user's own sites, else phrases from the title and h1 (a guess,

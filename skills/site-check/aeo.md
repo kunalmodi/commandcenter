@@ -66,6 +66,47 @@ web says about you counts.
   already get cited for your questions**, through real participation, reviews
   and PR. Not fake mentions, which Google explicitly calls out.
 
+## What a field test showed
+
+One structured test (November 2026; 20 runs across ChatGPT and Claude, 5
+switching and how-to prompts for a niche software tool, about 440 pages
+retrieved). *Confidence: anecdotal, one category*, but it fits the research
+above and is concrete about what to build.
+
+- **Fan-out queries check a few hard facts.** Nearly every search the
+  assistants ran asked: is it free and what are the limits, is it compatible
+  with the incumbent's format (here, "imports .fdx"), and what does it cost.
+  They usually add the current year ("... 2026"). ChatGPT's answer tables used
+  exactly those columns (Free plan, Imports X?, Cost, Best for). **So state
+  those facts in plain text**, ideally as a comparison table, with a visible
+  "updated <year>" date.
+- **Four kinds of page got cited:**
+  1. **Vendor help docs** that answer one question ("How to import a Final
+     Draft file"). One competitor's import article was cited in every run on
+     that question. Title it as the question and answer it in the first line.
+  2. **Pricing pages**, fetched to confirm free-tier limits. Limits and prices
+     hidden behind toggles or images don't get read.
+  3. **"X alternatives" listicles, often on tiny sites** (pages.dev and
+     onrender.com subdomains, AlternativeTo). The bar is low. Being listed
+     there is often easier than ranking yourself.
+  4. **Single-purpose tool pages** ("PDF to Fountain converter"). A small
+     dedicated converter site was cited in every run on its question.
+- **Comparison pages ("A vs B") mattered less**: assistants mostly cited each
+  vendor's own pages for those.
+- **Some questions weren't searched at all.** Claude answered "how do I open
+  file type Y" from memory in both runs (ChatGPT searched). For those, only
+  being well known on the wider web helps.
+- **An existing page that answers the question exactly was never retrieved.**
+  The cause was discoverability, not content: check the index (Search Console
+  and Bing), server rendering, and a title in the searchers' words ("Free PDF
+  to Fountain converter, online, no signup") before rewriting.
+
+**Typical priority list that comes out of a test like this:** make existing
+answer pages discoverable; add the sibling tool pages people search for; a
+"switching from <incumbent>" page that leads with the facts table; a help doc
+per compatibility question; plain-text pricing and limits; listings on
+AlternativeTo and the small listicles that get cited; comparison pages last.
+
 ## Low value or myths
 
 - **llms.txt.** In Ahrefs' 2026 data (137k domains), 97% of published llms.txt
@@ -90,9 +131,11 @@ web says about you counts.
   `Perplexity-User` are fetches made while answering a real person's question.
   They're the most direct sign that you're being retrieved. Training-crawler
   hits (GPTBot, ClaudeBot) say nothing about citations.
-- **Prompt sampling:** ask ChatGPT (with search), Claude and Perplexity the two
-  or three questions the page should win, and record who gets cited. Answers vary
-  between runs, so sample several times and track the trend.
+- **Prompt sampling:** ask ChatGPT (with search), Claude and Perplexity the
+  questions the page should win, several times each, since answers vary. Use
+  temporary or incognito chats, and discount mentions that come from the
+  user's own memory or installed connectors. Log the assistant's search queries
+  (Claude shows them), what it retrieved and what it cited.
 - **Retrieval rank:** where the page ranks on Bing and Brave for those questions
   is the closest measurable proxy for "can be cited".
 
